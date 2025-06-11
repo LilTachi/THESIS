@@ -81,6 +81,7 @@ def analyze_dataset(filepath, text_column='text', label_column='label'):
         except ValueError:
             phishing_proba = None
 
+
     # Predicted labels for all rows (train+test)
     predicted_labels = clf.predict(X)
 
