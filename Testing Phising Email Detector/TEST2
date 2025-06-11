@@ -45,13 +45,13 @@ def analyze_dataset(filepath, text_column='text', label_column='label'):
     """
     Analyze a CSV dataset for phishing sentiment and optionally evaluate against true labels.
     """
-    path = Path(r"C:\Users\User\Desktop\Testing Phising Email Detector\data\testDataset.csv")
+    path = Path(r"D:\TROY\Web Projects\Thesis\THESIS\data\testDataset.csv")
     if not path.is_file():
         raise FileNotFoundError(f"File not found: {path.resolve()}")
     # Load dataset
-    df = pd.read_csv(my_csv)
+    df = pd.read_csv(path)
     
-    df['clean_text'] = df['text'].apply(clean_text)
+    df['clean_text'] = df[text_column].apply(clean_text)
     
     sentiment_features = df['clean_text'].apply(extract_sentiment).tolist()
     sentiment_df = pd.DataFrame(sentiment_features, columns=['neg','neu','pos','compound'])
@@ -59,15 +59,12 @@ def analyze_dataset(filepath, text_column='text', label_column='label'):
     tfidf = TfidfVectorizer(max_features=1000)
     X_tfidf = tfidf.fit_transform(df['clean_text'])
     
-    
-   #combined_features = hstack([tfidf_matrix, array(sentiment_features)])
-    
     X = hstack([X_tfidf, array(sentiment_features)])
     y = df[label_column]
     
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
-)
+    )
 
     clf = RandomForestClassifier(n_estimators=100, random_state=42)
     clf.fit(X_train, y_train)
@@ -75,22 +72,20 @@ def analyze_dataset(filepath, text_column='text', label_column='label'):
     y_pred = clf.predict(X_test)
     print("ML Classification Report:\n", classification_report(y_test, y_pred))
     
-    df[['clean_text']].join(pd.DataFrame(sentiment_features, columns=['neg','neu','pos','compound'])), clf
-
-#Get probabilities for “phishing” class 
+    # Get probabilities for “phishing” class 
     phishing_proba = None
     if hasattr(clf, "predict_proba"):
-        # (If your label names are ['legit','phishing'], index_of_phishing will be 1.)
         try:
-            idx_phish = list(clf.classes_).index('phishing')
+            idx_phish = list(clf.classes_).index(1)  # 1 = phishing, 0 = not phishing
             phishing_proba = clf.predict_proba(X)[:, idx_phish]
         except ValueError:
             phishing_proba = None
 
+
     # Predicted labels for all rows (train+test)
     predicted_labels = clf.predict(X)
 
-    #Assemble the DataFrame:
+    # Assemble the DataFrame:
     result_df = pd.DataFrame({
         'original_text': df[text_column],
         'actual_label': df[label_column],
@@ -102,15 +97,18 @@ def analyze_dataset(filepath, text_column='text', label_column='label'):
         'predicted_label': predicted_labels
     })
 
-    #If the probabilities exist, add them:
+    # If the probabilities exist, add them:
     if phishing_proba is not None:
         result_df['phishing_probability'] = phishing_proba
+
+    # The metric: predicted_label == 1 means phishing, 0 means not phishing
+    result_df['phishing_result'] = result_df['predicted_label'].apply(lambda x: "Phishing" if x == 1 else "Not Phishing")
 
     return result_df
 
     
 
-my_csv = Path(r"C:\Users\User\Desktop\Testing Phising Email Detector\data\testDataset.csv")
+my_csv = Path(r"D:\TROY\Web Projects\Thesis\THESIS\data\testDataset.csv")
 
 if __name__ == '__main__':
     # Change depending on dataset
